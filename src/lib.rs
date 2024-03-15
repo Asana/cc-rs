@@ -2037,6 +2037,8 @@ impl Build {
                         }
 
                         cmd.push_cc_arg(format!("--target={}", target).into());
+                    } else if target == "x86_64-unknown-linux-gnu" {
+                        cmd.push_cc_arg(format!("--target=x86_64-linux-gnu").into());
                     } else {
                         cmd.push_cc_arg(format!("--target={}", target).into());
                     }
