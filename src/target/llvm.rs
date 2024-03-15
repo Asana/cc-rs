@@ -104,6 +104,7 @@ impl TargetInfo<'_> {
             ("", "", "") => format!("{arch}-{os}{version}"),
             ("", env, abi) => format!("{arch}-{os}{version}-{env}{abi}"),
             (vendor, "", "") => format!("{arch}-{vendor}-{os}{version}"),
+            ("unknown", env, "") if os != "unknown" => format!("{arch}-{os}{version}-{env}"),
             (vendor, env, abi) => format!("{arch}-{vendor}-{os}{version}-{env}{abi}"),
         })
     }
@@ -147,6 +148,18 @@ mod tests {
         );
         assert_eq!(
             TargetInfo {
+                full_arch: "aarch64",
+                arch: "aarch64",
+                vendor: "unknown",
+                os: "linux",
+                env: "gnu",
+                abi: "",
+            }
+            .llvm_target("invalid", None),
+            "aarch64-linux-gnu"
+        );
+        assert_eq!(
+            TargetInfo {
                 full_arch: "x86_64",
                 arch: "x86_64",
                 vendor: "unknown",
@@ -155,7 +168,7 @@ mod tests {
                 abi: "",
             }
             .llvm_target("invalid", None),
-            "x86_64-unknown-linux-gnu"
+            "x86_64-linux-gnu"
         );
         assert_eq!(
             TargetInfo {
