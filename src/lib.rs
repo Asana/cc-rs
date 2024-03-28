@@ -248,6 +248,7 @@ pub use tool::Tool;
 use tool::ToolFamily;
 
 mod target_info;
+mod tempfile;
 
 /// A builder for compilation of a native library.
 ///
@@ -314,6 +315,8 @@ enum ErrorKind {
     ToolNotFound,
     /// One of the function arguments failed validation.
     InvalidArgument,
+    /// No known macro is defined for the compiler when discovering tool family
+    ToolFamilyMacroNotFound,
     /// Invalid target
     InvalidTarget,
     #[cfg(feature = "parallel")]
@@ -621,7 +624,7 @@ impl Build {
         if compiler.family.verbose_stderr() {
             compiler.remove_arg("-v".into());
         }
-        if compiler.family == ToolFamily::Clang {
+        if compiler.is_like_clang() {
             // Avoid reporting that the arg is unsupported just because the
             // compiler complains that it wasn't used.
             compiler.push_cc_arg("-Wno-unused-command-line-argument".into());
@@ -629,7 +632,7 @@ impl Build {
 
         let mut cmd = compiler.to_command();
         let is_arm = target.contains("aarch64") || target.contains("arm");
-        let clang = compiler.family == ToolFamily::Clang;
+        let clang = compiler.is_like_clang();
         let gnu = compiler.family == ToolFamily::Gnu;
         command_add_output_file(
             &mut cmd,
@@ -1576,7 +1579,7 @@ impl Build {
         let target = self.get_target()?;
         let msvc = target.contains("msvc");
         let compiler = self.try_get_compiler()?;
-        let clang = compiler.family == ToolFamily::Clang;
+        let clang = compiler.is_like_clang();
         let gnu = compiler.family == ToolFamily::Gnu;
 
         let is_assembler_msvc = msvc && asm_ext == Some(AsmFileExt::DotAsm);
@@ -1732,7 +1735,7 @@ impl Build {
         if let Some(ref std) = self.std {
             let separator = match cmd.family {
                 ToolFamily::Msvc { .. } => ':',
-                ToolFamily::Gnu | ToolFamily::Clang => '=',
+                ToolFamily::Gnu | ToolFamily::Clang { .. } => '=',
             };
             cmd.push_cc_arg(format!("-std{}{}", separator, std).into());
         }
@@ -1825,23 +1828,23 @@ impl Build {
                     _ => {}
                 }
             }
-            ToolFamily::Gnu | ToolFamily::Clang => {
+            ToolFamily::Gnu | ToolFamily::Clang { .. } => {
                 // arm-linux-androideabi-gcc 4.8 shipped with Android NDK does
                 // not support '-Oz'
-                if opt_level == "z" && cmd.family != ToolFamily::Clang {
+                if opt_level == "z" && !cmd.is_like_clang() {
                     cmd.push_opt_unless_duplicate("-Os".into());
                 } else {
                     cmd.push_opt_unless_duplicate(format!("-O{}", opt_level).into());
                 }
 
-                if cmd.family == ToolFamily::Clang && target.contains("windows") {
+                if cmd.is_like_clang() && target.contains("windows") {
                     // Disambiguate mingw and msvc on Windows. Problem is that
                     // depending on the origin clang can default to a mismatchig
                     // run-time.
                     cmd.push_cc_arg(format!("--target={}", target).into());
                 }
 
-                if cmd.family == ToolFamily::Clang && target.contains("android") {
+                if cmd.is_like_clang() && target.contains("android") {
                     // For compatibility with code that doesn't use pre-defined `__ANDROID__` macro.
                     // If compiler used via ndk-build or cmake (officially supported build methods)
                     // this macros is defined.
@@ -1899,7 +1902,7 @@ impl Build {
 
         // Target flags
         match cmd.family {
-            ToolFamily::Clang => {
+            ToolFamily::Clang { .. } => {
                 if !cmd.has_internal_target_arg
                     && !(target.contains("android")
                         && android_clang_compiler_uses_target_arg_internally(&cmd.path))
@@ -2063,14 +2066,11 @@ impl Build {
                     } else {
                         cmd.push_cc_arg(format!("--target={}", target).into());
                     }
-                } else {
-                    if target.contains("i586") {
-                        cmd.push_cc_arg("-arch:IA32".into());
-                    } else if target.contains("arm64ec") {
-                        cmd.push_cc_arg("-arm64EC".into());
-                    }
+                } else if target.contains("i586") {
+                    cmd.push_cc_arg("-arch:IA32".into());
+                } else if target.contains("arm64ec") {
+                    cmd.push_cc_arg("-arm64EC".into());
                 }
-
                 // There is a check in corecrt.h that will generate a
                 // compilation error if
                 // _ARM_WINAPI_PARTITION_DESKTOP_SDK_AVAILABLE is
@@ -2296,7 +2296,7 @@ impl Build {
         if self.cpp {
             match (self.cpp_set_stdlib.as_ref(), cmd.family) {
                 (None, _) => {}
-                (Some(stdlib), ToolFamily::Gnu) | (Some(stdlib), ToolFamily::Clang) => {
+                (Some(stdlib), ToolFamily::Gnu) | (Some(stdlib), ToolFamily::Clang { .. }) => {
                     cmd.push_cc_arg(format!("-stdlib=lib{}", stdlib).into());
                 }
                 _ => {
@@ -2672,11 +2672,15 @@ impl Build {
     }
 
     fn get_base_compiler(&self) -> Result<Tool, Error> {
+        let out_dir = self.get_out_dir().ok();
+        let out_dir = out_dir.as_deref();
+
         if let Some(c) = &self.compiler {
             return Ok(Tool::new(
                 (**c).to_owned(),
                 &self.cached_compiler_family,
                 &self.cargo_output,
+                out_dir,
             ));
         }
         let host = self.get_host()?;
@@ -2718,6 +2722,7 @@ impl Build {
                     driver_mode,
                     &self.cached_compiler_family,
                     &self.cargo_output,
+                    out_dir,
                 );
                 if let Some(cc_wrapper) = wrapper {
                     t.cc_wrapper_path = Some(PathBuf::from(cc_wrapper));
@@ -2736,6 +2741,7 @@ impl Build {
                             PathBuf::from("cmd"),
                             &self.cached_compiler_family,
                             &self.cargo_output,
+                            out_dir,
                         );
                         t.args.push("/c".into());
                         t.args.push(format!("{}.bat", tool).into());
@@ -2745,6 +2751,7 @@ impl Build {
                             PathBuf::from(tool),
                             &self.cached_compiler_family,
                             &self.cargo_output,
+                            out_dir,
                         ))
                     }
                 } else {
@@ -2804,6 +2811,7 @@ impl Build {
                     PathBuf::from(compiler),
                     &self.cached_compiler_family,
                     &self.cargo_output,
+                    out_dir,
                 );
                 if let Some(cc_wrapper) = Self::rustc_wrapper_fallback() {
                     t.cc_wrapper_path = Some(PathBuf::from(cc_wrapper));
@@ -2827,6 +2835,7 @@ impl Build {
                 self.cuda,
                 &self.cached_compiler_family,
                 &self.cargo_output,
+                out_dir,
             );
             nvcc_tool
                 .args
@@ -3150,7 +3159,7 @@ impl Build {
                     // And even extend it to gcc targets by searching for "ar" instead
                     // of "llvm-ar"...
                     let compiler = self.get_base_compiler().ok()?;
-                    if compiler.family == ToolFamily::Clang {
+                    if compiler.is_like_clang() {
                         name = format!("llvm-{}", tool);
                         search_programs(&mut self.cmd(&compiler.path), &name, &self.cargo_output)
                             .map(|name| self.cmd(name))
@@ -3408,12 +3417,11 @@ impl Build {
                 })
             })
             .map(|prefix| *prefix)
-            .or_else(||
             // If no toolchain was found, provide the first toolchain that was passed in.
             // This toolchain has been shown not to exist, however it will appear in the
             // error that is shown to the user which should make it easier to search for
             // where it should be obtained.
-            prefixes.first().map(|prefix| *prefix))
+            .or_else(|| prefixes.first().map(|prefix| *prefix))
     }
 
     fn get_target(&self) -> Result<Arc<str>, Error> {
@@ -3747,6 +3755,7 @@ enum AppleOs {
     WatchOs,
     TvOs,
 }
+
 impl std::fmt::Debug for AppleOs {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
