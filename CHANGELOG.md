@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.14](https://github.com/Asana/cc-rs/compare/cc-v1.1.13...cc-v1.1.14) - 2024-08-22
+
+### Other
+- Support *-unknown-linux-gnu under `hermetic_cc_toolchain`
+
 ## [1.1.13](https://github.com/rust-lang/cc-rs/compare/cc-v1.1.12...cc-v1.1.13) - 2024-08-16
 
 ### Other
