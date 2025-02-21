@@ -2,6 +2,9 @@
 //! in dev-tools/gen-target-info if you need to make changes.
 
 pub const RISCV_ARCH_MAPPING: &[(&str, &str)] = &[
+    ("riscv32e", "riscv32"),
+    ("riscv32em", "riscv32"),
+    ("riscv32emc", "riscv32"),
     ("riscv32gc", "riscv32"),
     ("riscv32i", "riscv32"),
     ("riscv32im", "riscv32"),
@@ -18,9 +21,12 @@ pub const WINDOWS_TRIPLE_MAPPING: &[(&str, &str)] = &[
     ("i686-pc-windows-gnullvm", "i686-pc-windows-gnu"),
     ("i686-uwp-windows-gnu", "i686-pc-windows-gnu"),
     ("i686-uwp-windows-msvc", "i686-pc-windows-msvc"),
+    ("i686-win7-windows-gnu", "i686-pc-windows-gnu"),
     ("i686-win7-windows-msvc", "i686-pc-windows-msvc"),
     ("thumbv7a-uwp-windows-msvc", "thumbv7a-pc-windows-msvc"),
     ("x86_64-pc-windows-gnullvm", "x86_64-pc-windows-gnu"),
     ("x86_64-uwp-windows-gnu", "x86_64-pc-windows-gnu"),
     ("x86_64-uwp-windows-msvc", "x86_64-pc-windows-msvc"),
+    ("x86_64-win7-windows-gnu", "x86_64-pc-windows-gnu"),
+    ("x86_64-win7-windows-msvc", "x86_64-pc-windows-msvc"),
 ];
