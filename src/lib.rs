@@ -2254,8 +2254,22 @@ impl Build {
                         None
                     };
 
-                    let clang_target =
-                        target.llvm_target(&self.get_raw_target()?, version.as_deref());
+                    let clang_target = if target.vendor == "unknown"
+                        && target.os == "linux"
+                        && target.env == "gnu"
+                    {
+                        match target.full_arch {
+                            "x86_64" => Cow::Borrowed("x86_64-linux-gnu"),
+                            "aarch64" => Cow::Borrowed("aarch64-linux-gnu"),
+                            "arm64" => Cow::Borrowed("arm64-linux-gnu"),
+                            _ => {
+                                panic!("Unsupported target triple - please update the cc-rs patch")
+                            }
+                        }
+                    } else {
+                        target.llvm_target(&self.get_raw_target()?, version.as_deref())
+                    };
+                        // target.llvm_target(&self.get_raw_target()?, version.as_deref());
                     cmd.push_cc_arg(format!("--target={clang_target}").into());
                 }
             }
