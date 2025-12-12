@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0](https://github.com/Asana/cc-rs/compare/find-msvc-tools-v0.1.4...find-msvc-tools-v0.2.0) - 2025-12-12
+
+### Other
+
+- release ([#1593](https://github.com/Asana/cc-rs/pull/1593))
+- Allow using VCToolsVersion to request a specific msvc version ([#1589](https://github.com/Asana/cc-rs/pull/1589))
+- Regenerate windows sys bindings ([#1591](https://github.com/Asana/cc-rs/pull/1591))
+- release ([#1583](https://github.com/Asana/cc-rs/pull/1583))
+- Regenerate windows sys bindings ([#1572](https://github.com/Asana/cc-rs/pull/1572))
+- release ([#1558](https://github.com/Asana/cc-rs/pull/1558))
+- [win] Search the Windows SDK for tools as well ([#1553](https://github.com/Asana/cc-rs/pull/1553))
+- release ([#1542](https://github.com/Asana/cc-rs/pull/1542))
+- Regenerate windows sys bindings ([#1548](https://github.com/Asana/cc-rs/pull/1548))
+- Add fn get_ucrt_dir for find-msvc-tools ([#1546](https://github.com/Asana/cc-rs/pull/1546))
+- Extract windows-find-tools ([#1531](https://github.com/Asana/cc-rs/pull/1531))
+
 ## [0.1.4](https://github.com/rust-lang/cc-rs/compare/find-msvc-tools-v0.1.3...find-msvc-tools-v0.1.4) - 2025-10-10
 
 ### Other
